@@ -1,14 +1,20 @@
+require("dotenv").config(); // Load .env file contents into process.env
 const { Sequelize, DataTypes } = require("sequelize");
 
 // Initialize Sequelize
-const sequelize = new Sequelize("nitro", "root", "", {
-  host: "127.0.0.1", // Use IPv4 loopback address
-  dialect: "mysql", // Specify MySQL as the dialect
-  port: 3306, // Default MySQL port
-  dialectOptions: {
-    // Remove unrecognized options or update as needed
-  },
-});
+const sequelize = new Sequelize(
+  process.env.DB_NAME, // Database name
+  process.env.DB_USER, // Database user
+  process.env.DB_PASSWORD, // Database password
+  {
+    host: process.env.DB_HOST, // Hostname
+    dialect: process.env.DB_DIALECT, // Database dialect (e.g., mysql)
+    port: process.env.DB_PORT, // Database port
+    dialectOptions: {
+      // Update or remove options as needed
+    },
+  }
+);
 
 // Test the connection
 sequelize

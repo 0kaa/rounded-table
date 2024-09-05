@@ -1,57 +1,49 @@
-require("dotenv").config(); // Load .env file contents into process.env
+require("dotenv").config();
 const { Sequelize, DataTypes } = require("sequelize");
 
 // Initialize Sequelize
 const sequelize = new Sequelize(
-  process.env.DB_NAME, // Database name
-  process.env.DB_USER, // Database user
-  process.env.DB_PASSWORD, // Database password
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
   {
-    host: process.env.DB_HOST, // Hostname
-    dialect: process.env.DB_DIALECT, // Database dialect (e.g., mysql)
-    port: process.env.DB_PORT, // Database port
-    dialectOptions: {
-      // Update or remove options as needed
-    },
+    host: process.env.DB_HOST,
+    dialect: process.env.DB_DIALECT,
+    port: process.env.DB_PORT,
   }
 );
 
-// Test the connection
-sequelize
-  .authenticate()
-  .then(() => console.log("Connection has been established successfully."))
-  .catch((err) => console.error("Unable to connect to the database:", err));
-
-// Define a model
-const User = sequelize.define(
-  "User",
+// Define a model for RFID
+const RFID = sequelize.define(
+  "RFID",
   {
-    name: {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    rfidCode: {
       type: DataTypes.STRING,
       allowNull: false,
+      unique: true, // Ensure RFID code is unique
     },
-    email: {
+    videoUrl: {
       type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    age: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: false, // URL of the uploaded video
     },
   },
   {
-    // Other model options go here
+    // Other model options can go here
   }
 );
 
 // Sync the model with the database
 sequelize
   .sync()
-  .then(() => console.log("User table has been synced."))
+  .then(() => console.log("RFID table has been synced."))
   .catch((err) => console.error("Unable to sync the database:", err));
 
 module.exports = {
   sequelize,
-  User,
+  RFID,
 };

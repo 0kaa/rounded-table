@@ -1,69 +1,132 @@
 const express = require("express");
-const { RFID } = require("./db"); // Import the RFID model
-const multer = require("multer");
+const fs = require("fs");
 const path = require("path");
-const fs = require("fs"); // Import fs to handle file deletion
 const { v4: uuidv4 } = require("uuid"); // Use UUID to generate unique IDs
 
 const app = express();
 const port = 5001;
-
-// Multer setup for file uploads with custom filename using the generated UUID
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Define the folder for video uploads
-  },
-  filename: (req, file, cb) => {
-    const rfidId = uuidv4(); // Generate UUID for the RFID entry
-    req.rfidId = rfidId; // Store the generated RFID ID in the request object
-    const fileExtension = path.extname(file.originalname); // Get the file extension (e.g., .mp4)
-    cb(null, `${rfidId}${fileExtension}`); // Save the file with the UUID as the name
-  },
-});
-
-const upload = multer({ storage });
+const dataFilePath = path.join(__dirname, "data.json");
 
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Serve uploaded files
 
-// Helper function to delete a file
-const deleteFile = (filePath) => {
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath); // Remove the file from the file system
+// Helper functions
+const loadData = () => {
+  try {
+    const data = fs.readFileSync(dataFilePath, "utf-8");
+    return JSON.parse(data);
+  } catch (err) {
+    // If file is empty or invalid, return an empty structure
+    return { rfidEntries: [] };
   }
 };
 
+const saveData = (data) => {
+  fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+};
+
+const deleteFile = (filePath) => {
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+};
+
+// Multer setup for file uploads with custom filename using the generated UUID
+const multer = require("multer");
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    const rfidId = uuidv4();
+    req.rfidId = rfidId;
+    const fileExtension = path.extname(file.originalname);
+    cb(null, `${rfidId}${fileExtension}`);
+  },
+});
+const upload = multer({ storage });
+
 // Create a new RFID entry and upload a video
-app.post("/rfid", upload.single("video"), async (req, res) => {
+app.post("/rfid", upload.single("video"), (req, res) => {
   try {
     const { rfidCode } = req.body;
-    const videoUrl = `/uploads/${req.file.filename}`; // Get the uploaded file path, already named with UUID
+    const videoUrl = `/uploads/${req.file.filename}`;
 
-    // Create the RFID entry using the generated UUID and video URL
-    const rfidEntry = await RFID.create({
-      id: req.rfidId, // Use the pre-generated UUID for the ID
+    // Load existing data
+    const data = loadData();
+
+    // Check for duplicate rfidCode
+    const existingRFID = data.rfidEntries.find(
+      (entry) => entry.rfidCode === rfidCode
+    );
+    if (existingRFID) {
+      return res.status(400).json({ error: "RFID code already exists" });
+    }
+
+    // Create new RFID entry
+    const newEntry = {
+      id: req.rfidId,
       rfidCode,
       videoUrl,
-    });
-    res.json(rfidEntry);
+    };
+
+    // Save entry to data.json
+    data.rfidEntries.push(newEntry);
+    saveData(data);
+
+    res.json(newEntry);
   } catch (err) {
     console.error("Error creating RFID entry:", err);
-    
-    // If there's an error after file upload, delete the uploaded file
     if (req.file && req.file.path) {
       const filePath = path.join(__dirname, req.file.path);
-      deleteFile(filePath); // Call helper function to delete the file
+      deleteFile(filePath);
     }
-    
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get all RFID entries
-app.get("/rfid", async (req, res) => {
+// Update an RFID entry
+app.put("/rfid/:id", upload.single("video"), (req, res) => {
   try {
-    const rfidEntries = await RFID.findAll();
-    res.json(rfidEntries);
+    const { rfidCode } = req.body;
+    const videoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+    const data = loadData();
+    const entryIndex = data.rfidEntries.findIndex(
+      (entry) => entry.id === req.params.id
+    );
+
+    if (entryIndex === -1) {
+      return res.status(404).send("RFID entry not found");
+    }
+
+    // Check if another entry already uses the updated rfidCode
+    const existingRFID = data.rfidEntries.find(
+      (entry) => entry.rfidCode === rfidCode && entry.id !== req.params.id
+    );
+    if (existingRFID) {
+      return res.status(400).json({ error: "RFID code already exists" });
+    }
+
+    const updatedEntry = {
+      ...data.rfidEntries[entryIndex],
+      rfidCode,
+      ...(videoUrl && { videoUrl }),
+    };
+    data.rfidEntries[entryIndex] = updatedEntry;
+    saveData(data);
+    res.json(updatedEntry);
+  } catch (err) {
+    console.error("Error updating RFID entry:", err);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Get all RFID entries
+app.get("/rfid", (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.rfidEntries);
   } catch (err) {
     console.error("Error fetching RFID entries:", err);
     res.status(500).send("Internal Server Error");
@@ -71,9 +134,12 @@ app.get("/rfid", async (req, res) => {
 });
 
 // Get a specific RFID entry by ID
-app.get("/rfid/:id", async (req, res) => {
+app.get("/rfid/:id", (req, res) => {
   try {
-    const rfidEntry = await RFID.findByPk(req.params.id);
+    const data = loadData();
+    const rfidEntry = data.rfidEntries.find(
+      (entry) => entry.id === req.params.id
+    );
     if (rfidEntry) {
       res.json(rfidEntry);
     } else {
@@ -85,33 +151,22 @@ app.get("/rfid/:id", async (req, res) => {
   }
 });
 
-// Update an RFID entry
-app.put("/rfid/:id", upload.single("video"), async (req, res) => {
-  try {
-    const { rfidCode } = req.body;
-    const videoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
-
-    const [updated] = await RFID.update(
-      { rfidCode, ...(videoUrl && { videoUrl }) },
-      { where: { id: req.params.id } }
-    );
-    if (updated) {
-      const updatedRFID = await RFID.findByPk(req.params.id);
-      res.json(updatedRFID);
-    } else {
-      res.status(404).send("RFID entry not found");
-    }
-  } catch (err) {
-    console.error("Error updating RFID entry:", err);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
 // Delete an RFID entry
-app.delete("/rfid/:id", async (req, res) => {
+app.delete("/rfid/:id", (req, res) => {
   try {
-    const deleted = await RFID.destroy({ where: { id: req.params.id } });
-    if (deleted) {
+    const data = loadData();
+    const entryIndex = data.rfidEntries.findIndex(
+      (entry) => entry.id === req.params.id
+    );
+
+    if (entryIndex !== -1) {
+      const [deletedEntry] = data.rfidEntries.splice(entryIndex, 1);
+      saveData(data);
+
+      // Delete associated video file
+      const filePath = path.join(__dirname, deletedEntry.videoUrl);
+      deleteFile(filePath);
+
       res.status(204).send("RFID entry deleted");
     } else {
       res.status(404).send("RFID entry not found");

@@ -1,7 +1,7 @@
 
-# RFID Backend Application
+# RFID Backend Application Using JSON Storage
 
-This application is a Node.js-based backend service for managing RFID entries and associated video uploads. It uses Sequelize as an ORM to interact with the database, Multer for handling file uploads, and UUIDs to uniquely identify each RFID entry and its corresponding video file.
+This application is a Node.js-based backend service for managing RFID entries and associated video uploads. It uses JSON files (`data.json`) for data persistence instead of a traditional database, Multer for handling file uploads, and UUIDs for unique identification.
 
 ## Features
 
@@ -15,25 +15,14 @@ This application is a Node.js-based backend service for managing RFID entries an
 
 - **Node.js**: Backend runtime.
 - **Express.js**: Web framework for building APIs.
-- **Sequelize**: ORM for database management.
 - **Multer**: Middleware for handling multipart/form-data (file uploads).
 - **UUID**: For generating unique identifiers for each RFID entry and associated video file.
+- **File System (fs)**: For managing data in `data.json`.
 - **Postman**: For testing the API.
-- **MySQL or PostgreSQL**: Database systems (can be configured in Sequelize).
 
 ## Prerequisites
 
 - Node.js installed on your machine.
-- A MySQL/PostgreSQL database setup and configured with Sequelize.
-- A `.env` file with the following variables configured:
-
-  ```
-  DB_NAME=your_database_name
-  DB_USER=your_database_user
-  DB_PASSWORD=your_database_password
-  DB_HOST=your_database_host
-  DB_DIALECT=mysql_or_postgres
-  ```
 
 ## Installation
 
@@ -50,12 +39,12 @@ This application is a Node.js-based backend service for managing RFID entries an
    npm install
    ```
 
-3. Set up the database:
+3. Create a `data.json` file in the root directory if it doesn't exist:
 
-   Configure the `.env` file as described above, then run:
-
-   ```bash
-   npx sequelize-cli db:migrate
+   ```json
+   {
+     "rfidEntries": []
+   }
    ```
 
 4. Start the server:
@@ -109,31 +98,9 @@ Example using Postman:
 - **Parameters**: `id` (UUID) - The UUID of the RFID entry.
 - **Response**: Deletes the specified RFID entry and its associated video file.
 
-## Error Handling
-
-- **Unique RFID Code Constraint**: If an RFID code already exists in the database, the server will return a `400 Bad Request` with an error message.
-- **File Deletion on Error**: If any error occurs during the database transaction (e.g., duplicate RFID code or DB connection issue), the uploaded video file is automatically deleted to prevent unused files from remaining on the server.
-
-## Directory Structure
-
-```bash
-.
-├── db.js                  # Sequelize ORM setup
-├── server.js              # Main application server
-├── uploads/               # Directory where uploaded video files are stored
-├── models/                # Sequelize models (e.g., RFID model)
-├── migrations/            # Sequelize migration files
-├── README.md              # Documentation for the app
-└── .env                   # Environment configuration file
-```
-
 ## File Uploads
 
-The video files uploaded by users are stored in the `uploads/` directory. If an error occurs during the database transaction, the uploaded file is automatically deleted to keep the system clean. The files are named using a UUID to ensure uniqueness.
-
-## Testing
-
-You can test the API using tools like Postman or curl. Make sure to use `form-data` for the `POST` and `PUT` requests that involve file uploads.
+The video files uploaded by users are stored in the `uploads/` directory. If an error occurs during the transaction, the uploaded file is automatically deleted to keep the system clean. The files are named using a UUID to ensure uniqueness.
 
 ---
 
@@ -144,13 +111,8 @@ The `uploads/` folder is where all the video files associated with RFID entries 
 ### How It Works:
 
 - Each video file is uploaded with a unique UUID as its filename.
-- The filename also retains the original file extension (e.g., `.mp4`).
+- The filename retains the original file extension (e.g., `.mp4`).
 - Example of a file stored in the `uploads` folder: `7f8e6c93-a489-4cf4-b5f1-20b9c3a8e291.mp4`.
-
-### Automatic File Deletion:
-
-- If an error occurs while creating or updating an RFID entry, the uploaded video file is automatically deleted using the `fs.unlinkSync()` method to ensure that no unused files are stored.
-- Files that are successfully associated with RFID entries remain in the `uploads/` directory and can be accessed via their URL.
 
 ### Folder Structure:
 

@@ -83,31 +83,12 @@ app.put("/kezadlayout/:screenName", async (req, res) => {
   }
 });
 
-// Update a KezadLayout entry
-app.put("/kezadlayout/:id", async (req, res) => {
+// Delete a KezadLayout entry by ScreenName
+app.delete("/kezadlayout/:screenName", async (req, res) => {
   try {
-    const { ScreenName, ActiveLayout } = req.body;
-
-    const [updated] = await KezadLayout.update(
-      { ScreenName, ActiveLayout },
-      { where: { id: req.params.id } }
-    );
-    if (updated) {
-      const updatedKezadLayout = await KezadLayout.findByPk(req.params.id);
-      res.json(updatedKezadLayout);
-    } else {
-      res.status(404).send("KezadLayout entry not found");
-    }
-  } catch (err) {
-    console.error("Error updating KezadLayout entry:", err);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-// Delete a KezadLayout entry
-app.delete("/kezadlayout/:id", async (req, res) => {
-  try {
-    const deleted = await KezadLayout.destroy({ where: { id: req.params.id } });
+    const deleted = await KezadLayout.destroy({
+      where: { ScreenName: req.params.screenName },
+    });
     if (deleted) {
       res.status(204).send("KezadLayout entry deleted");
     } else {

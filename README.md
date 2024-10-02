@@ -1,23 +1,20 @@
+# KezadLayout Backend Application
 
-# RFID Backend Application
-
-This application is a Node.js-based backend service for managing RFID entries and associated video uploads. It uses Sequelize as an ORM to interact with the database, Multer for handling file uploads, and UUIDs to uniquely identify each RFID entry and its corresponding video file.
+This application is a Node.js-based backend service for managing KezadLayout entries. It uses Sequelize as an ORM to interact with the database and UUIDs to uniquely identify each KezadLayout entry.
 
 ## Features
 
-- **Create an RFID entry with video upload**: Each RFID entry contains a unique RFID code and a video file, with the file saved using a UUID.
-- **Retrieve RFID entries**: You can list all RFID entries or get a specific entry by its UUID.
-- **Update RFID entries**: Update the RFID code and/or replace the associated video file.
-- **Delete RFID entries**: Delete an RFID entry and its associated video from the system.
-- **File upload management**: Video files are uploaded and stored in the `uploads` folder. If an error occurs while creating an RFID entry, the uploaded video file is automatically deleted.
+- **Create a KezadLayout entry**: Each KezadLayout entry contains a unique ScreenName and an ActiveLayout.
+- **Retrieve KezadLayout entries**: You can list all KezadLayout entries or get a specific entry by its ScreenName.
+- **Update KezadLayout entries**: Update the ActiveLayout for a specific ScreenName.
+- **Delete KezadLayout entries**: Delete a KezadLayout entry from the system.
 
 ## Technologies Used
 
 - **Node.js**: Backend runtime.
 - **Express.js**: Web framework for building APIs.
 - **Sequelize**: ORM for database management.
-- **Multer**: Middleware for handling multipart/form-data (file uploads).
-- **UUID**: For generating unique identifiers for each RFID entry and associated video file.
+- **UUID**: For generating unique identifiers for each KezadLayout entry.
 - **Postman**: For testing the API.
 - **MySQL or PostgreSQL**: Database systems (can be configured in Sequelize).
 
@@ -40,8 +37,8 @@ This application is a Node.js-based backend service for managing RFID entries an
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/yourusername/rfid-backend-app.git
-   cd rfid-backend-app
+   git clone https://github.com/yourusername/kezadlayout-backend-app.git
+   cd kezadlayout-backend-app
    ```
 
 2. Install the dependencies:
@@ -56,6 +53,7 @@ This application is a Node.js-based backend service for managing RFID entries an
 
    ```bash
    npx sequelize-cli db:migrate
+   npx sequelize-cli db:seed:all
    ```
 
 4. Start the server:
@@ -68,51 +66,63 @@ This application is a Node.js-based backend service for managing RFID entries an
 
 ## API Endpoints
 
-### 1. Create an RFID Entry with Video Upload
+### 1. Create a KezadLayout Entry
 
-- **Endpoint**: `POST /rfid`
-- **Form Data**:
-  - `rfidCode` (Text): The unique RFID code.
-  - `video` (File): The video file associated with the RFID entry.
-- **Response**: Returns the created RFID entry with the associated video URL.
+- **Endpoint**: `POST /kezadlayout`
+- **Body**:
+  - `ScreenName` (Text): The unique screen name.
+  - `ActiveLayout` (Text): The active layout for the screen.
+- **Response**: Returns the created KezadLayout entry.
 
 Example using Postman:
 
 1. Set method to `POST`.
-2. Use `form-data` in the body:
-   - `rfidCode`: A unique RFID code.
-   - `video`: Upload a video file.
+2. Use `raw` JSON in the body:
+   ```json
+   {
+     "ScreenName": "WaveScreen",
+     "ActiveLayout": "Layout1"
+   }
+   ```
 
-### 2. Retrieve All RFID Entries
+### 2. Retrieve All KezadLayout Entries
 
-- **Endpoint**: `GET /rfid`
-- **Response**: Returns a list of all RFID entries.
+- **Endpoint**: `GET /kezadlayout`
+- **Response**: Returns a list of all KezadLayout entries.
 
-### 3. Retrieve a Specific RFID Entry
+### 3. Retrieve a Specific KezadLayout Entry
 
-- **Endpoint**: `GET /rfid/:id`
-- **Parameters**: `id` (UUID) - The UUID of the RFID entry.
-- **Response**: Returns the details of the specified RFID entry.
+- **Endpoint**: `GET /kezadlayout/:screenName`
+- **Parameters**: `screenName` (Text) - The screen name of the KezadLayout entry.
+- **Response**: Returns the details of the specified KezadLayout entry.
 
-### 4. Update an RFID Entry
+### 4. Update a KezadLayout Entry
 
-- **Endpoint**: `PUT /rfid/:id`
-- **Parameters**: `id` (UUID) - The UUID of the RFID entry.
-- **Form Data**:
-  - `rfidCode` (optional): The updated RFID code.
-  - `video` (optional): The updated video file.
-- **Response**: Returns the updated RFID entry.
+- **Endpoint**: `PUT /kezadlayout/:screenName`
+- **Parameters**: `screenName` (Text) - The screen name of the KezadLayout entry.
+- **Body**:
+  - `ActiveLayout` (Text): The updated active layout.
+- **Response**: Returns the updated KezadLayout entry.
 
-### 5. Delete an RFID Entry
+Example using Postman:
 
-- **Endpoint**: `DELETE /rfid/:id`
-- **Parameters**: `id` (UUID) - The UUID of the RFID entry.
-- **Response**: Deletes the specified RFID entry and its associated video file.
+1. Set method to `PUT`.
+2. Use `raw` JSON in the body:
+   ```json
+   {
+     "ActiveLayout": "UpdatedLayout"
+   }
+   ```
+
+### 5. Delete a KezadLayout Entry
+
+- **Endpoint**: `DELETE /kezadlayout/:screenName`
+- **Parameters**: `screenName` (Text) - The screen name of the KezadLayout entry.
+- **Response**: Deletes the specified KezadLayout entry.
 
 ## Error Handling
 
-- **Unique RFID Code Constraint**: If an RFID code already exists in the database, the server will return a `400 Bad Request` with an error message.
-- **File Deletion on Error**: If any error occurs during the database transaction (e.g., duplicate RFID code or DB connection issue), the uploaded video file is automatically deleted to prevent unused files from remaining on the server.
+- **Unique ScreenName Constraint**: If a ScreenName already exists in the database, the server will return a `400 Bad Request` with an error message.
 
 ## Directory Structure
 
@@ -120,47 +130,19 @@ Example using Postman:
 .
 ├── db.js                  # Sequelize ORM setup
 ├── server.js              # Main application server
-├── uploads/               # Directory where uploaded video files are stored
-├── models/                # Sequelize models (e.g., RFID model)
+├── models/                # Sequelize models (e.g., KezadLayout model)
 ├── migrations/            # Sequelize migration files
+├── seeders/               # Sequelize seed files
 ├── README.md              # Documentation for the app
 └── .env                   # Environment configuration file
 ```
 
-## File Uploads
-
-The video files uploaded by users are stored in the `uploads/` directory. If an error occurs during the database transaction, the uploaded file is automatically deleted to keep the system clean. The files are named using a UUID to ensure uniqueness.
-
 ## Testing
 
-You can test the API using tools like Postman or curl. Make sure to use `form-data` for the `POST` and `PUT` requests that involve file uploads.
+You can test the API using tools like Postman or curl. Make sure to use `raw` JSON for the `POST` and `PUT` requests.
 
 ---
 
-## `uploads` Folder
+## Important Notes:
 
-The `uploads/` folder is where all the video files associated with RFID entries are stored.
-
-### How It Works:
-
-- Each video file is uploaded with a unique UUID as its filename.
-- The filename also retains the original file extension (e.g., `.mp4`).
-- Example of a file stored in the `uploads` folder: `7f8e6c93-a489-4cf4-b5f1-20b9c3a8e291.mp4`.
-
-### Automatic File Deletion:
-
-- If an error occurs while creating or updating an RFID entry, the uploaded video file is automatically deleted using the `fs.unlinkSync()` method to ensure that no unused files are stored.
-- Files that are successfully associated with RFID entries remain in the `uploads/` directory and can be accessed via their URL.
-
-### Folder Structure:
-
-```bash
-uploads/
-├── 7f8e6c93-a489-4cf4-b5f1-20b9c3a8e291.mp4   # Example of an uploaded video file
-├── a87b4cfa-b59f-439a-87ec-1f99c9e4d759.mp4   # Another example video file
-└── ...                                        # More uploaded files
-```
-
-### Important Notes:
-
-- **Do not manually delete or modify files in the `uploads/` directory**. Files are managed automatically by the system.
+- **Do not manually delete or modify entries in the database**. Entries are managed automatically by the system.

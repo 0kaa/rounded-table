@@ -14,36 +14,34 @@ const sequelize = new Sequelize(
 );
 
 // Define a model for RFID
-const RFID = sequelize.define(
-  "RFID",
+const KezadLayout = sequelize.define(
+  "KezadLayout",
   {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    rfidCode: {
+    ScreenName: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true, // Ensure RFID code is unique
+      unique: true,
     },
-    videoUrl: {
+    ActiveLayout: {
       type: DataTypes.STRING,
-      allowNull: false, // URL of the uploaded video
+      allowNull: false,
     },
   },
-  {
-    // Other model options can go here
-  }
+  {}
 );
 
 // Sync the model with the database
 sequelize
   .sync()
-  .then(() => console.log("RFID table has been synced."))
+  .then(() => console.log("KezadLayout table has been synced."))
   .catch((err) => console.error("Unable to sync the database:", err));
 
 module.exports = {
   sequelize,
-  RFID,
+  KezadLayout,
 };

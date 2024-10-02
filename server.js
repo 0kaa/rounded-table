@@ -1,123 +1,120 @@
 const express = require("express");
-const { RFID } = require("./db"); // Import the RFID model
-const multer = require("multer");
-const path = require("path");
+const { KezadLayout } = require("./db"); // Import the KezadLayout model
 const fs = require("fs"); // Import fs to handle file deletion
 const { v4: uuidv4 } = require("uuid"); // Use UUID to generate unique IDs
 
 const app = express();
 const port = 5001;
 
-// Multer setup for file uploads with custom filename using the generated UUID
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Define the folder for video uploads
-  },
-  filename: (req, file, cb) => {
-    const rfidId = uuidv4(); // Generate UUID for the RFID entry
-    req.rfidId = rfidId; // Store the generated RFID ID in the request object
-    const fileExtension = path.extname(file.originalname); // Get the file extension (e.g., .mp4)
-    cb(null, `${rfidId}${fileExtension}`); // Save the file with the UUID as the name
-  },
-});
-
-const upload = multer({ storage });
-
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Serve uploaded files
 
-// Helper function to delete a file
-const deleteFile = (filePath) => {
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath); // Remove the file from the file system
-  }
-};
-
-// Create a new RFID entry and upload a video
-app.post("/rfid", upload.single("video"), async (req, res) => {
+// Create a new KezadLayout entry
+app.post("/kezadlayout", async (req, res) => {
   try {
-    const { rfidCode } = req.body;
-    const videoUrl = `/uploads/${req.file.filename}`; // Get the uploaded file path, already named with UUID
+    const { ScreenName, ActiveLayout } = req.body;
 
-    // Create the RFID entry using the generated UUID and video URL
-    const rfidEntry = await RFID.create({
-      id: req.rfidId, // Use the pre-generated UUID for the ID
-      rfidCode,
-      videoUrl,
+    // Create the KezadLayout entry
+    const kezadLayoutEntry = await KezadLayout.create({
+      id: uuidv4(), // Generate UUID for the ID
+      ScreenName,
+      ActiveLayout,
     });
-    res.json(rfidEntry);
+    res.json(kezadLayoutEntry);
   } catch (err) {
-    console.error("Error creating RFID entry:", err);
-    
-    // If there's an error after file upload, delete the uploaded file
-    if (req.file && req.file.path) {
-      const filePath = path.join(__dirname, req.file.path);
-      deleteFile(filePath); // Call helper function to delete the file
-    }
-    
+    console.error("Error creating KezadLayout entry:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get all RFID entries
-app.get("/rfid", async (req, res) => {
+// Get all KezadLayout entries
+app.get("/kezadlayout", async (req, res) => {
   try {
-    const rfidEntries = await RFID.findAll();
-    res.json(rfidEntries);
+    const kezadLayoutEntries = await KezadLayout.findAll();
+    res.json(kezadLayoutEntries);
   } catch (err) {
-    console.error("Error fetching RFID entries:", err);
+    console.error("Error fetching KezadLayout entries:", err);
     res.status(500).send("Internal Server Error");
   }
 });
 
-// Get a specific RFID entry by ID
-app.get("/rfid/:id", async (req, res) => {
+// Get a specific KezadLayout entry by ScreenName
+app.get("/kezadlayout/:screenName", async (req, res) => {
   try {
-    const rfidEntry = await RFID.findByPk(req.params.id);
-    if (rfidEntry) {
-      res.json(rfidEntry);
+    const kezadLayoutEntry = await KezadLayout.findOne({
+      where: { ScreenName: req.params.screenName },
+    });
+    if (kezadLayoutEntry) {
+      res.json(kezadLayoutEntry);
     } else {
-      res.status(404).send("RFID entry not found");
+      res.status(404).send("KezadLayout entry not found");
     }
   } catch (err) {
-    console.error("Error fetching RFID entry:", err);
+    console.error("Error fetching KezadLayout entry:", err);
+    res.status(500).send("Internal Server Error");
+  }
+});
+// Update a KezadLayout entry by ScreenName
+app.put("/kezadlayout/:screenName", async (req, res) => {
+  try {
+    const { ActiveLayout } = req.body;
+    const { screenName } = req.params;
+
+    // Ensure only 'WaveScreen' and 'customerTestimonials' can be updated
+    if (screenName !== "WaveScreen" && screenName !== "customerTestimonials") {
+      return res.status(400).send("Invalid ScreenName");
+    }
+
+    const [updated] = await KezadLayout.update(
+      { ActiveLayout },
+      { where: { ScreenName: screenName } }
+    );
+
+    if (updated) {
+      const updatedKezadLayout = await KezadLayout.findOne({
+        where: { ScreenName: screenName },
+      });
+      res.json(updatedKezadLayout);
+    } else {
+      res.status(404).send("KezadLayout entry not found");
+    }
+  } catch (err) {
+    console.error("Error updating KezadLayout entry:", err);
     res.status(500).send("Internal Server Error");
   }
 });
 
-// Update an RFID entry
-app.put("/rfid/:id", upload.single("video"), async (req, res) => {
+// Update a KezadLayout entry
+app.put("/kezadlayout/:id", async (req, res) => {
   try {
-    const { rfidCode } = req.body;
-    const videoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const { ScreenName, ActiveLayout } = req.body;
 
-    const [updated] = await RFID.update(
-      { rfidCode, ...(videoUrl && { videoUrl }) },
+    const [updated] = await KezadLayout.update(
+      { ScreenName, ActiveLayout },
       { where: { id: req.params.id } }
     );
     if (updated) {
-      const updatedRFID = await RFID.findByPk(req.params.id);
-      res.json(updatedRFID);
+      const updatedKezadLayout = await KezadLayout.findByPk(req.params.id);
+      res.json(updatedKezadLayout);
     } else {
-      res.status(404).send("RFID entry not found");
+      res.status(404).send("KezadLayout entry not found");
     }
   } catch (err) {
-    console.error("Error updating RFID entry:", err);
+    console.error("Error updating KezadLayout entry:", err);
     res.status(500).send("Internal Server Error");
   }
 });
 
-// Delete an RFID entry
-app.delete("/rfid/:id", async (req, res) => {
+// Delete a KezadLayout entry
+app.delete("/kezadlayout/:id", async (req, res) => {
   try {
-    const deleted = await RFID.destroy({ where: { id: req.params.id } });
+    const deleted = await KezadLayout.destroy({ where: { id: req.params.id } });
     if (deleted) {
-      res.status(204).send("RFID entry deleted");
+      res.status(204).send("KezadLayout entry deleted");
     } else {
-      res.status(404).send("RFID entry not found");
+      res.status(404).send("KezadLayout entry not found");
     }
   } catch (err) {
-    console.error("Error deleting RFID entry:", err);
+    console.error("Error deleting KezadLayout entry:", err);
     res.status(500).send("Internal Server Error");
   }
 });
